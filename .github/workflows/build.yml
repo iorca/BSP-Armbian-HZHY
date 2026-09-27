@@ -53,6 +53,11 @@ jobs:
           echo "--- lib.config ---"; cat userpatches/lib.config
           echo "--- board config ---"; cat config/boards/hz-evm-rk3588.conf
 
+      - name: Set up QEMU static binfmt
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - name: Build Armbian image
         run: |
           # pipefail: without it the exit code comes from `tee` (always 0),
