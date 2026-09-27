@@ -1,0 +1,7 @@
+# Local copies of vendor source trees pulled from the VM (1.6G+).
+# The real sources live on the kernel / u-boot / rkbin branches of this repo;
+# these directories are only local scratch copies and must never be committed
+# to the main branch.
+/kernel/
+/u-boot/
+/rkbin/

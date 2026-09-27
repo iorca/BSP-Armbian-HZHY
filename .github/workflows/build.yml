@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 180
+    timeout-minutes: 360
 
     steps:
       - name: Checkout Armbian build framework
@@ -30,31 +30,27 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Clone BSP kernel source (branch:kernel)
-        run: |
-          git clone --branch kernel --depth 1 \
-            https://github.com/iorca/BSP-Armbian-HZHY.git \
-            cache/sources/linux-rockchip/hz-evm-rk3588/kernel-6.1
+      # NOTE: we deliberately do NOT pre-clone kernel/u-boot/rkbin here.
+      # Armbian's fetch_from_repo manages cache/sources/ layout itself;
+      # guessing its directory names risks a mismatch. The repo/branch are
+      # supplied via userpatches/lib.config (KERNELSOURCE/KERNELBRANCH/
+      # BOOTSOURCE/BOOTBRANCH), so Armbian clones the correct vendor trees.
 
-      - name: Clone BSP U-Boot source (branch:u-boot)
+      - name: Copy userpatches and board config
         run: |
-          git clone --branch u-boot --depth 1 \
-            https://github.com/iorca/BSP-Armbian-HZHY.git \
-            cache/sources/u-boot-rockchip64/hz-evm-rk3588/u-boot-2017.09
+          REPO_RAW="https://raw.githubusercontent.com/iorca/BSP-Armbian-HZHY/main"
 
-      - name: Clone rkbin blobs (branch:rkbin)
-        run: |
-          git clone --branch rkbin --depth 1 \
-            https://github.com/iorca/BSP-Armbian-HZHY.git \
-            cache/sources/rkbin-hz-evm
-
-      - name: Copy userpatches
-        run: |
-          # Copy lib.config for toolchain override
+          # Toolchain / source overrides
           mkdir -p userpatches
-          curl -sL https://raw.githubusercontent.com/iorca/BSP-Armbian-HZHY/main/userpatches/lib.config \
-            -o userpatches/lib.config
-          cat userpatches/lib.config
+          curl -sL "${REPO_RAW}/userpatches/lib.config" -o userpatches/lib.config
+
+          # Board definition — without this Armbian does not know BOARD=hz-evm-rk3588
+          mkdir -p config/sources/boards
+          curl -sL "${REPO_RAW}/config/sources/boards/hz-evm-rk3588.conf" \
+            -o config/sources/boards/hz-evm-rk3588.conf
+
+          echo "--- lib.config ---"; cat userpatches/lib.config
+          echo "--- board config ---"; cat config/sources/boards/hz-evm-rk3588.conf
 
       - name: Build Armbian image
         run: |
