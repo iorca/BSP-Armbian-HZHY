@@ -1,0 +1,90 @@
+name: Build Armbian BSP Image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout Armbian build framework
+        uses: actions/checkout@v4
+        with:
+          repository: armbian/build
+          ref: main
+          fetch-depth: 0
+
+      - name: Download BSP toolchain from Release
+        run: |
+          TOOLCHAIN_URL=$(gh release view toolchain-v1 --repo iorca/BSP-Armbian-HZHY --json assets --jq '.assets[0].url')
+          echo "Downloading toolchain from: ${TOOLCHAIN_URL}"
+          mkdir -p /opt/toolchain
+          curl -L "${TOOLCHAIN_URL}" -o /tmp/toolchain.tar.gz
+          tar xzf /tmp/toolchain.tar.gz -C /opt/toolchain
+          ls /opt/toolchain/HZ-EVM-RK3588-Linux-GCC/bin/ | head -5
+          echo "Toolchain ready."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clone BSP kernel source (branch:kernel)
+        run: |
+          git clone --branch kernel --depth 1 \
+            https://github.com/iorca/BSP-Armbian-HZHY.git \
+            cache/sources/linux-rockchip/hz-evm-rk3588/kernel-6.1
+
+      - name: Clone BSP U-Boot source (branch:u-boot)
+        run: |
+          git clone --branch u-boot --depth 1 \
+            https://github.com/iorca/BSP-Armbian-HZHY.git \
+            cache/sources/u-boot-rockchip64/hz-evm-rk3588/u-boot-2017.09
+
+      - name: Clone rkbin blobs (branch:rkbin)
+        run: |
+          git clone --branch rkbin --depth 1 \
+            https://github.com/iorca/BSP-Armbian-HZHY.git \
+            cache/sources/rkbin-hz-evm
+
+      - name: Copy userpatches
+        run: |
+          # Copy lib.config for toolchain override
+          mkdir -p userpatches
+          curl -sL https://raw.githubusercontent.com/iorca/BSP-Armbian-HZHY/main/userpatches/lib.config \
+            -o userpatches/lib.config
+          cat userpatches/lib.config
+
+      - name: Build Armbian image
+        run: |
+          ./compile.sh \
+            BOARD=hz-evm-rk3588 \
+            BRANCH=vendor \
+            RELEASE=jammy \
+            BUILD_MINIMAL=yes \
+            BUILD_DESKTOP=no \
+            KERNEL_ONLY=no \
+            COMPRESS_OUTPUTIMAGE=sha,gpg \
+            EXPERT=yes \
+            SKIP_EXTERNAL_TOOLCHAINS=yes \
+            USE_CCACHE=no \
+            2>&1 | tee build.log
+        env:
+          ARMBIAN_BUILD_FORCE_ARTIFACTS_UPLOAD: "yes"
+
+      - name: Upload image artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: armbian-hz-evm-rk3588-image
+          path: output/images/*.img*
+          retention-days: 7
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 7
