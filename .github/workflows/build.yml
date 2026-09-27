@@ -54,6 +54,9 @@ jobs:
 
       - name: Build Armbian image
         run: |
+          # pipefail: without it the exit code comes from `tee` (always 0),
+          # which masks compile.sh failures and shows a false green build.
+          set -o pipefail
           ./compile.sh \
             BOARD=hz-evm-rk3588 \
             BRANCH=vendor \
