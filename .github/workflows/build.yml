@@ -61,6 +61,7 @@ jobs:
             BOARD=hz-evm-rk3588 \
             BRANCH=vendor \
             RELEASE=jammy \
+            KERNEL_CONFIGURE=no \
             BUILD_MINIMAL=yes \
             BUILD_DESKTOP=no \
             KERNEL_ONLY=no \
