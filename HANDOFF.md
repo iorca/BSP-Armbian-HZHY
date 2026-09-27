@@ -124,9 +124,40 @@ SERIALCON="ttyFIQ0:1500000"
 
 ---
 
-## 六、下一步建议
+## 六、CI 调试记录（已修 4 个问题）
 
-1. 先看 CI 日志。若 U-Boot 阶段失败 → 按风险 2 处理（加 hook 调 `make.sh`）。
-2. 若内核配置不对 → 核实 `LINUXCONFIG` 变量名（查 Armbian `config/sources/families/` 下 rk35xx 相关文件）。
-3. 构建成功后 → 烧录验证串口登录（`ttyFIQ0:1500000`），再看 HDMI。
-4. 阶段二再动 MIPI 屏。
+| # | 现象 | 根因 | 修复 |
+|---|------|------|------|
+| 1 | run 显示 **success 但只跑 1m53s**（假绿灯） | `./compile.sh \| tee build.log` 的退出码取 `tee`（恒为 0） | 加 `set -o pipefail` |
+| 2 | `error! stdin is not a terminal. can't use dialog`（exit 43） | `interactive_config_ask_kernel_configure()` 仅在 `KERNEL_CONFIGURE` 非空时跳过 | 加 `KERNEL_CONFIGURE=no` |
+| 3 | `No such BOARD 'hz-evm-rk3588'` | board config 放在 `config/sources/boards/`（该目录 404 不存在） | 改到 **`config/boards/`** |
+| 4 | `BRANCH='vendor' not valid ... KERNEL_TARGET='Image'` | `KERNEL_TARGET` 是**分支列表**不是镜像类型 | 改为 `KERNEL_TARGET="vendor"` |
+
+## 七、当前阻塞：容器内 QEMU binfmt 注册失败
+
+```
+Failed to update binfmts: update-binfmts --enable qemu-arm
+Failed to update binfmts: update-binfmts --enable qemu-riscv64
+Failed to update binfmts: update-binfmts --enable qemu-loongarch64
+```
+
+Armbian 在 **docker 容器内**执行 `prepare_host_binfmt_qemu()`（`lib/functions/rootfs/qemu-static.sh:129`）。
+GitHub 托管 runner 的容器非 privileged，容器内无法写 host 的 `binfmt_misc`，因此失败。
+已尝试 `docker/setup-qemu-action@v3`（host 侧注册）**无效**——因为 Armbian 仍要在容器内再注册一遍。
+
+**未继续猜测绕过方案**（不确定 Armbian 是否有跳过 binfmt 的开关，不编造变量名）。
+
+### 可选方向（需查证后再动）
+1. 查 Armbian 是否有跳过 `prepare_host_binfmt_qemu` 的变量/配置（搜 `qemu-static.sh` 与 `prepare-host.sh`）。
+2. 让 Armbian 用 privileged 容器（若框架支持传入 docker run 参数）。
+3. 交叉验证：本阶段其实不一定要 qemu（arm64 本机不是必须，但 rootfs 构建阶段会用）。
+4. 若都无法解决 → 考虑 self-hosted runner（但主人明确排除该方案，需重新评估）。
+
+## 八、下一步建议
+
+1. **先解决 binfmt 阻塞**（第七节），这是当前唯一卡点，尚未进入真正的源码编译。
+2. 之后最可能失败的是 **U-Boot 构建**：厂家 U-Boot 2017.09 用 `make.sh`（Rockchip 流程），
+   Armbian 默认走标准 `make`，可能需 hook 调 `make.sh`。
+3. 核实 `LINUXCONFIG` 变量名（board config 中用了它指定 `HZ-EVM-RK3588_defconfig`，未在 Armbian 源码核实）。
+4. 构建成功后 → 烧录验证串口登录（`ttyFIQ0:1500000`），再看 HDMI。
+5. 阶段二再动 MIPI 屏。
