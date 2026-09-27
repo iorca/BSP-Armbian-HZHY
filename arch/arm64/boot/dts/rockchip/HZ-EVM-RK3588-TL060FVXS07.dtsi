@@ -1,0 +1,151 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * HZ-EVM-RK3588 + 天马 TL060FVXS07 MIPI-DSI 屏 (1080x2160, 4 lane, RGB888)
+ *
+ * 适配说明 (BSP 6.1, Rockchip):
+ *   - SoC 侧: DSI0 (fde20000) + mipidcphy0 (feda0000), MIPI 座子 = MIPI_DPHY0_TX
+ *   - 背光: PWM0 = GPIO1_A2 (pwm0m2_pins)  -> 复用板级 &backlight_dsi0
+ *   - 复位: LCD_RESX = GPIO0_B2, 低有效 -> reset-gpios ACTIVE_LOW + pinctrl pull_down
+ *   - 初始化序列: 友坚 NanoPC-T6 参考已线上(LPDT)验证, 直接照搬
+ *   - 触摸 (sec,sec_ts) 搁置, 不在此固件内
+ *
+ * 复位时序 (panel-simple.c prepare()):
+ *   enable=1 -> msleep(prepare) -> reset=1(物理LOW, 断言) -> msleep(reset)
+ *   -> reset=0(物理HIGH, 释放) -> msleep(init) -> 发 init 序列
+ *   即: LOW 120ms -> HIGH 120ms -> 发指令, 满足屏规格
+ */
+
+/* ---------- 背光: 复用板级 &backlight_dsi0 (pwm0 已 mux 到 GPIO1_A2) ---------- */
+&backlight_dsi0 {
+	pwms = <&pwm0 0 20000 0>;
+	status = "okay";
+};
+
+/* ---------- 复位脚 pinctrl: GPIO0_B2, 上电到 probe 之间按在复位里(pull_down) ---------- */
+&pinctrl {
+	lcd {
+		/omit-if-no-ref/
+		lcd_resx_gpio: lcd-resx-gpio {
+			rockchip,pins = <0 RK_PB2 RK_FUNC_GPIO &pcfg_pull_down>;
+		};
+	};
+};
+
+/* ---------- VOP/DSI 路由: DSI0 -> VP3 ---------- */
+&route_dsi0 {
+	connect = <&vp3_out_dsi0>;
+	status = "okay";
+};
+
+&dsi0_in_vp2 {
+	status = "disabled";
+};
+
+&dsi0_in_vp3 {
+	status = "okay";
+};
+
+&mipi_dcphy0 {
+	status = "okay";
+};
+
+/* ---------- DSI0 面板 ---------- */
+&dsi0 {
+	status = "okay";
+	dsi0_panel: panel@0 {
+		status = "okay";
+		compatible = "simple-panel-dsi";
+		reg = <0>;
+
+		backlight = <&backlight_dsi0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&lcd_resx_gpio>;
+		reset-gpios = <&gpio0 RK_PB2 GPIO_ACTIVE_LOW>;
+
+		prepare-delay-ms = <20>;
+		reset-delay-ms = <120>;
+		init-delay-ms = <120>;
+		enable-delay-ms = <35>;
+		disable-delay-ms = <50>;
+		unprepare-delay-ms = <50>;
+
+		width-mm = <74>;
+		height-mm = <133>;
+
+		dsi,flags = <(MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_BURST |
+			MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_NO_EOT_PACKET)>;
+		dsi,format = <MIPI_DSI_FMT_RGB888>;
+		dsi,lanes = <4>;
+
+		panel-init-sequence = [
+			39 00 03 9F A5 A5
+			05 78 01 11
+			15 00 02 55 10
+			39 00 03 F0 5A 5A
+			15 00 02 73 94
+			39 00 3D EA 00 73 11 1B 23 2A 40 59 70 6E A1 86 92 9F AB B8 4D 59 65 7F 00 73 11 1B 23 2A 40 59 70 6E A1 86 92 9F AB B8 4D 59 65 7F 00 73 11 1B 23 2A 40 59 70 6E A1 86 92 9F AB B8 4D 59 65 7F
+			39 00 3D EB 00 73 11 1B 23 2A 40 59 70 6E A1 86 92 9F AB B8 4D 59 65 7F 00 73 11 1B 23 2A 40 59 70 6E A1 86 92 9F AB B8 4D 59 65 7F 00 73 11 1B 23 2A 40 59 70 6E A1 86 92 9F AB B8 4D 59 65 7F
+			39 00 03 F0 A5 A5
+			05 09 01 29
+			39 00 03 9F 5A 5A
+		];
+
+		panel-exit-sequence = [
+			39 00 03 9F A5 A5
+			05 00 01 28
+			05 50 02 10 00
+			39 00 03 F0 5A 5A
+			15 00 02 73 90
+			39 00 03 F0 A5 A5
+			05 00 01 24
+			39 00 03 9F 5A 5A
+		];
+
+		display-timings {
+			native-mode = <&dsi_timing0>;
+			dsi_timing0: timing0 {
+				clock-frequency = <154000000>;
+				hactive = <1080>;
+				vactive = <2160>;
+
+				vback-porch = <6>;
+				vfront-porch = <8>;
+
+				hback-porch = <4>;
+				hfront-porch = <92>;
+
+				hsync-len = <4>;
+				vsync-len = <2>;
+
+				vsync-active = <0>;
+				hsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <0>;
+			};
+		};
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				panel_in_dsi0: endpoint {
+					remote-endpoint = <&dsi0_out_panel>;
+				};
+			};
+		};
+	};
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@1 {
+			reg = <1>;
+			dsi0_out_panel: endpoint {
+				remote-endpoint = <&panel_in_dsi0>;
+			};
+		};
+	};
+};

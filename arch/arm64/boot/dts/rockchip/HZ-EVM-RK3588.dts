@@ -1,0 +1,9 @@
+/dts-v1/;
+
+#include "HZ-EVM-RK3588.dtsi"
+#include "HZ-EVM-RK3588-TL060FVXS07.dtsi"
+
+/ {
+    model = "HZ-EVM-RK3588 Board";
+	compatible = "HZ-EVM-RK3588", "rockchip,rk3588-evb7-lp4-v10", "rockchip,rk3588";
+};
