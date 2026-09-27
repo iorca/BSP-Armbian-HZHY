@@ -44,13 +44,14 @@ jobs:
           mkdir -p userpatches
           curl -sL "${REPO_RAW}/userpatches/lib.config" -o userpatches/lib.config
 
-          # Board definition — without this Armbian does not know BOARD=hz-evm-rk3588
-          mkdir -p config/sources/boards
-          curl -sL "${REPO_RAW}/config/sources/boards/hz-evm-rk3588.conf" \
-            -o config/sources/boards/hz-evm-rk3588.conf
+          # Board definition — without this Armbian does not know BOARD=hz-evm-rk3588.
+          # Armbian looks in config/boards/ (config/sources/boards does not exist).
+          mkdir -p config/boards
+          curl -sL "${REPO_RAW}/config/boards/hz-evm-rk3588.conf" \
+            -o config/boards/hz-evm-rk3588.conf
 
           echo "--- lib.config ---"; cat userpatches/lib.config
-          echo "--- board config ---"; cat config/sources/boards/hz-evm-rk3588.conf
+          echo "--- board config ---"; cat config/boards/hz-evm-rk3588.conf
 
       - name: Build Armbian image
         run: |
