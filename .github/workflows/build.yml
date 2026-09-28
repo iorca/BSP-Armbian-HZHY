@@ -90,6 +90,10 @@ jobs:
           # pipefail: without it the exit code comes from `tee` (always 0),
           # which masks compile.sh failures and shows a false green build.
           set -o pipefail
+          export PREFER_DOCKER=no
+          export PATH="${GITHUB_WORKSPACE}/toolchain/HZ-EVM-RK3588-Linux-GCC/bin:${PATH}"
+          test -x "${GITHUB_WORKSPACE}/toolchain/HZ-EVM-RK3588-Linux-GCC/bin/aarch64-buildroot-linux-gnu-gcc"
+          command -v aarch64-buildroot-linux-gnu-gcc
           ./compile.sh \
             kernel \
             BOARD=hz-evm-rk3588 \
