@@ -50,8 +50,18 @@ jobs:
           curl -sL "${REPO_RAW}/config/boards/hz-evm-rk3588.conf" \
             -o config/boards/hz-evm-rk3588.conf
 
+          # Kernel config. Armbian resolves LINUXCONFIG to
+          # config/kernel/<LINUXCONFIG>.config (NOT a defconfig inside the
+          # kernel tree). Missing it caused:
+          #   sha256sum: config/kernel/HZ-EVM-RK3588_defconfig.config:
+          #   No such file or directory   -> hash-files.sh:74 error 1
+          mkdir -p config/kernel
+          curl -sL "${REPO_RAW}/config/kernel/HZ-EVM-RK3588_defconfig.config" \
+            -o config/kernel/HZ-EVM-RK3588_defconfig.config
+
           echo "--- lib.config ---"; cat userpatches/lib.config
           echo "--- board config ---"; cat config/boards/hz-evm-rk3588.conf
+          echo "--- kernel config lines ---"; wc -l config/kernel/HZ-EVM-RK3588_defconfig.config
 
       - name: Set up QEMU static binfmt
         uses: docker/setup-qemu-action@v3
