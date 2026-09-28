@@ -22,10 +22,10 @@ jobs:
         run: |
           TOOLCHAIN_URL=$(gh release view toolchain-v1 --repo iorca/BSP-Armbian-HZHY --json assets --jq '.assets[0].url')
           echo "Downloading toolchain from: ${TOOLCHAIN_URL}"
-          mkdir -p /opt/toolchain
+          mkdir -p toolchain
           curl -L "${TOOLCHAIN_URL}" -o /tmp/toolchain.tar.gz
-          tar xzf /tmp/toolchain.tar.gz -C /opt/toolchain
-          ls /opt/toolchain/HZ-EVM-RK3588-Linux-GCC/bin/ | head -5
+          tar xzf /tmp/toolchain.tar.gz -C toolchain
+          ls toolchain/HZ-EVM-RK3588-Linux-GCC/bin/ | head -5
           echo "Toolchain ready."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
