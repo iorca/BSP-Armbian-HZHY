@@ -19,6 +19,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download BSP toolchain from Release
+        if: false
         run: |
           TOOLCHAIN_URL=$(gh release view toolchain-v1 --repo iorca/BSP-Armbian-HZHY --json assets --jq '.assets[0].url')
           echo "Downloading toolchain from: ${TOOLCHAIN_URL}"
@@ -30,14 +31,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify BSP toolchain in build workspace
-        run: |
-          test -x userpatches/toolchain/HZ-EVM-RK3588-Linux-GCC/bin/aarch64-buildroot-linux-gnu-gcc
-          echo "Toolchain compiler present in userpatches mount"
-          userpatches/toolchain/HZ-EVM-RK3588-Linux-GCC/bin/aarch64-buildroot-linux-gnu-gcc --version | head -1
-          chmod +x userpatches/toolchain/HZ-EVM-RK3588-Linux-GCC/bin/aarch64-buildroot-linux-gnu-gcc
-
-      # Armbian's fetch_from_repo manages cache/sources/ layout itself;
+      - name: Copy userpatches and board config
       # guessing its directory names risks a mismatch. The repo/branch are
       # supplied via userpatches/lib.config (KERNELSOURCE/KERNELBRANCH/
       # BOOTSOURCE/BOOTBRANCH), so Armbian clones the correct vendor trees.
@@ -68,11 +62,6 @@ jobs:
           echo "--- lib.config ---"; cat userpatches/lib.config
           echo "--- board config ---"; cat config/boards/hz-evm-rk3588.conf
           echo "--- kernel config lines ---"; wc -l config/kernel/HZ-EVM-RK3588_defconfig.config
-          echo "--- toolchain in workspace ---"
-          find userpatches/toolchain/HZ-EVM-RK3588-Linux-GCC/bin -maxdepth 1 -type f -name 'aarch64-buildroot-linux-gnu-gcc*' -ls
-          echo "--- toolchain inside Armbian container ---"
-          docker run --rm -v "${GITHUB_WORKSPACE}/userpatches:/armbian/userpatches" ubuntu:22.04 \
-            test -x /armbian/userpatches/toolchain/HZ-EVM-RK3588-Linux-GCC/bin/aarch64-buildroot-linux-gnu-gcc
 
       - name: Set up QEMU static binfmt
         uses: docker/setup-qemu-action@v3
@@ -94,9 +83,6 @@ jobs:
           # which masks compile.sh failures and shows a false green build.
           set -o pipefail
           unset PREFER_DOCKER
-          export PATH="${GITHUB_WORKSPACE}/userpatches/toolchain/HZ-EVM-RK3588-Linux-GCC/bin:${PATH}"
-          test -x "${GITHUB_WORKSPACE}/userpatches/toolchain/HZ-EVM-RK3588-Linux-GCC/bin/aarch64-buildroot-linux-gnu-gcc"
-          command -v aarch64-buildroot-linux-gnu-gcc
           ./compile.sh \
             kernel \
             BOARD=hz-evm-rk3588 \
