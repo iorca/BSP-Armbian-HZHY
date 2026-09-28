@@ -31,7 +31,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Copy userpatches and board config
+      # Armbian's fetch_from_repo manages cache/sources/ layout itself;
       # guessing its directory names risks a mismatch. The repo/branch are
       # supplied via userpatches/lib.config (KERNELSOURCE/KERNELBRANCH/
       # BOOTSOURCE/BOOTBRANCH), so Armbian clones the correct vendor trees.
