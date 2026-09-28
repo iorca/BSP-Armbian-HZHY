@@ -98,6 +98,22 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      # CI logs are not readable without a token; annotations are. Emit the
+      # interesting log lines as ::error:: so they surface in the run's
+      # Annotations section and can be inspected without downloading logs.
+      - name: Expose build log via annotations
+        if: always()
+        run: |
+          if [ -f build.log ]; then
+            echo "=== hash/sha256 related lines ==="
+            grep -inE 'hash|sha256sum|files_to_hash' build.log | head -25 |
+              while IFS= read -r l; do echo "::error::HASHLOG $l"; done
+            echo "=== last 30 lines ==="
+            tail -30 build.log | while IFS= read -r l; do echo "::error::TAIL $l"; done
+          else
+            echo "::error::build.log not found"
+          fi
+
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
