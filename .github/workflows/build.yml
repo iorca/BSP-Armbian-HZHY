@@ -22,20 +22,20 @@ jobs:
         run: |
           TOOLCHAIN_URL=$(gh release view toolchain-v1 --repo iorca/BSP-Armbian-HZHY --json assets --jq '.assets[0].url')
           echo "Downloading toolchain from: ${TOOLCHAIN_URL}"
-          mkdir -p toolchain
+          mkdir -p userpatches/toolchain
           curl -L "${TOOLCHAIN_URL}" -o /tmp/toolchain.tar.gz
-          tar xzf /tmp/toolchain.tar.gz -C toolchain
-          ls toolchain/HZ-EVM-RK3588-Linux-GCC/bin/ | head -5
+          tar xzf /tmp/toolchain.tar.gz -C userpatches/toolchain
+          ls userpatches/toolchain/HZ-EVM-RK3588-Linux-GCC/bin/ | head -5
           echo "Toolchain ready."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify BSP toolchain in build workspace
         run: |
-          test -x toolchain/HZ-EVM-RK3588-Linux-GCC/bin/aarch64-buildroot-linux-gnu-gcc
-          echo "Toolchain compiler present on host workspace"
-          toolchain/HZ-EVM-RK3588-Linux-GCC/bin/aarch64-buildroot-linux-gnu-gcc --version | head -1
-          chmod +x toolchain/HZ-EVM-RK3588-Linux-GCC/bin/aarch64-buildroot-linux-gnu-gcc
+          test -x userpatches/toolchain/HZ-EVM-RK3588-Linux-GCC/bin/aarch64-buildroot-linux-gnu-gcc
+          echo "Toolchain compiler present in userpatches mount"
+          userpatches/toolchain/HZ-EVM-RK3588-Linux-GCC/bin/aarch64-buildroot-linux-gnu-gcc --version | head -1
+          chmod +x userpatches/toolchain/HZ-EVM-RK3588-Linux-GCC/bin/aarch64-buildroot-linux-gnu-gcc
 
       # Armbian's fetch_from_repo manages cache/sources/ layout itself;
       # guessing its directory names risks a mismatch. The repo/branch are
@@ -69,7 +69,10 @@ jobs:
           echo "--- board config ---"; cat config/boards/hz-evm-rk3588.conf
           echo "--- kernel config lines ---"; wc -l config/kernel/HZ-EVM-RK3588_defconfig.config
           echo "--- toolchain in workspace ---"
-          find toolchain/HZ-EVM-RK3588-Linux-GCC/bin -maxdepth 1 -type f -name 'aarch64-buildroot-linux-gnu-gcc*' -ls
+          find userpatches/toolchain/HZ-EVM-RK3588-Linux-GCC/bin -maxdepth 1 -type f -name 'aarch64-buildroot-linux-gnu-gcc*' -ls
+          echo "--- toolchain inside Armbian container ---"
+          docker run --rm -v "${GITHUB_WORKSPACE}/userpatches:/armbian/userpatches" ubuntu:22.04 \
+            test -x /armbian/userpatches/toolchain/HZ-EVM-RK3588-Linux-GCC/bin/aarch64-buildroot-linux-gnu-gcc
 
       - name: Set up QEMU static binfmt
         uses: docker/setup-qemu-action@v3
