@@ -1,0 +1,16 @@
+diff --git a/arch/arm64/boot/dts/rockchip/HZ-EVM-RK3588.dtsi b/arch/arm64/boot/dts/rockchip/HZ-EVM-RK3588.dtsi
+--- a/arch/arm64/boot/dts/rockchip/HZ-EVM-RK3588.dtsi
++++ b/arch/arm64/boot/dts/rockchip/HZ-EVM-RK3588.dtsi
+@@ -1180,7 +1180,7 @@
+ &pcie30phy {
+ 	rockchip,pcie30-phymode = <PHY_MODE_PCIE_AGGREGATION>;
+-	status = "okay";
++	status = "disabled";
+ };
+@@ -1189,7 +1189,7 @@
+ &pcie3x4 {
+ 	reset-gpios = <&gpio4 RK_PB6 GPIO_ACTIVE_HIGH>;
+ 	vpcie3v3-supply = <&vcc3v3_pcie30>;
+-	status = "okay";
++	status = "disabled";
+ };
