@@ -1,0 +1,8 @@
+config:
+  name: hz-evm-vendor-6.1
+  kind: kernel
+  type: vendor
+  branch: kernel
+
+  auto-patch-dt-makefile:
+    - { incremental: true, directory: "arch/arm64/boot/dts/rockchip", config-var: "CONFIG_ARCH_ROCKCHIP" }

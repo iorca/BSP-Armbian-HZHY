@@ -62,6 +62,8 @@ jobs:
           mkdir -p userpatches/kernel/hz-evm-vendor-6.1
           curl -sL "${REPO_RAW}/userpatches/kernel/hz-evm-vendor-6.1/disable-pcie3.patch" \
             -o userpatches/kernel/hz-evm-vendor-6.1/disable-pcie3.patch
+          curl -sL "${REPO_RAW}/userpatches/kernel/hz-evm-vendor-6.1/0000.patching_config.yaml" \
+            -o userpatches/kernel/hz-evm-vendor-6.1/0000.patching_config.yaml
 
           echo "--- lib.config ---"; cat userpatches/lib.config
           echo "--- board config ---"; cat config/boards/hz-evm-rk3588.conf
@@ -71,7 +73,8 @@ jobs:
           test -s config/kernel/HZ-EVM-RK3588_defconfig.config
           test -s userpatches/kernel/hz-evm-vendor-6.1/disable-pcie3.patch
           grep -q 'status = "disabled"' userpatches/kernel/hz-evm-vendor-6.1/disable-pcie3.patch
-          grep -q 'KERNELPATCHDIR.*hz-evm-vendor-6.1' userpatches/lib.config
+          test -s userpatches/kernel/hz-evm-vendor-6.1/0000.patching_config.yaml
+          grep -q '^config:' userpatches/kernel/hz-evm-vendor-6.1/0000.patching_config.yaml
 
       - name: Set up QEMU static binfmt
         uses: docker/setup-qemu-action@v3
