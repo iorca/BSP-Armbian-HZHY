@@ -60,26 +60,24 @@ jobs:
 
       - name: Build Armbian image
         run: |
-          # KERNEL_ONLY=yes: build kernel/u-boot only, no rootfs/image.
-          # This skips the binfmt requirement (Armbian sets NEEDS_BINFMT=yes
-          # only for image build / rootfs artifact build — see
-          # lib/functions/rootfs/qemu-static.sh::prepare_host_binfmt_qemu),
-          # which currently fails inside the unprivileged GH container.
-          # Verifies vendor source fetch + toolchain first; flip back to
-          # "no" once the binfmt/rootfs issue is solved.
+          # New Armbian CLI uses subcommands. KERNEL_ONLY=yes is REMOVED:
+          #   error! KERNEL_ONLY is set. This is not supported anymore.
+          #   use ./compile.sh kernel BOARD=hz-evm-rk3588 BRANCH=vendor
+          # `kernel` builds only the kernel (+dtbs) and skips rootfs/image,
+          # which avoids the binfmt stage (NEEDS_BINFMT is only set for image
+          # build / rootfs artifact build). Verifies vendor source fetch and
+          # toolchain wiring first; switch to `build` for the full image once
+          # the binfmt/rootfs problem is solved.
           #
           # pipefail: without it the exit code comes from `tee` (always 0),
           # which masks compile.sh failures and shows a false green build.
           set -o pipefail
           ./compile.sh \
+            kernel \
             BOARD=hz-evm-rk3588 \
             BRANCH=vendor \
             RELEASE=jammy \
             KERNEL_CONFIGURE=no \
-            BUILD_MINIMAL=yes \
-            BUILD_DESKTOP=no \
-            KERNEL_ONLY=yes \
-            COMPRESS_OUTPUTIMAGE=sha,gpg \
             EXPERT=yes \
             SKIP_EXTERNAL_TOOLCHAINS=yes \
             USE_CCACHE=no \
