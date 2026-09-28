@@ -124,7 +124,7 @@ SERIALCON="ttyFIQ0:1500000"
 
 ---
 
-## 六、CI 调试记录（已修 4 个问题）
+## 六、CI 调试记录（已修 5 个问题）
 
 | # | 现象 | 根因 | 修复 |
 |---|------|------|------|
@@ -132,26 +132,42 @@ SERIALCON="ttyFIQ0:1500000"
 | 2 | `error! stdin is not a terminal. can't use dialog`（exit 43） | `interactive_config_ask_kernel_configure()` 仅在 `KERNEL_CONFIGURE` 非空时跳过 | 加 `KERNEL_CONFIGURE=no` |
 | 3 | `No such BOARD 'hz-evm-rk3588'` | board config 放在 `config/sources/boards/`（该目录 404 不存在） | 改到 **`config/boards/`** |
 | 4 | `BRANCH='vendor' not valid ... KERNEL_TARGET='Image'` | `KERNEL_TARGET` 是**分支列表**不是镜像类型 | 改为 `KERNEL_TARGET="vendor"` |
+| 5 | `KERNEL_ONLY is set. This is not supported anymore` | 新版 Armbian 改用**子命令 CLI**，`KERNEL_ONLY` 已废弃 | 用 `./compile.sh kernel BOARD=... BRANCH=vendor` |
 
-## 七、当前阻塞：容器内 QEMU binfmt 注册失败
+### 关键认知：新版 Armbian 是子命令 CLI
 
 ```
-Failed to update binfmts: update-binfmts --enable qemu-arm
-Failed to update binfmts: update-binfmts --enable qemu-riscv64
-Failed to update binfmts: update-binfmts --enable qemu-loongarch64
+./compile.sh build  BOARD=... BRANCH=...   # 完整镜像（需 rootfs/binfmt）
+./compile.sh kernel BOARD=... BRANCH=...   # 只编内核+dtb（跳过 rootfs）
+```
+`kernel` 子命令可绕过 binfmt 阶段（`NEEDS_BINFMT` 只在 image/rootfs 构建时置 yes）。
+
+## 七、当前阻塞：hash-files.sh:74
+
+```
+Error 1 occurred in SUBSHELL at /armbian/lib/functions/general/hash-files.sh:74
 ```
 
-Armbian 在 **docker 容器内**执行 `prepare_host_binfmt_qemu()`（`lib/functions/rootfs/qemu-static.sh:129`）。
-GitHub 托管 runner 的容器非 privileged，容器内无法写 host 的 `binfmt_misc`，因此失败。
-已尝试 `docker/setup-qemu-action@v3`（host 侧注册）**无效**——因为 Armbian 仍要在容器内再注册一遍。
+第 74 行是：
+```bash
+full_hash="$(cd "${SRC}" && sha256sum "${files_to_hash_sorted[@]}")"
+```
+`sha256sum` 返回 1 = 列表中至少一个文件读不到/不存在，或**参数列表超限**。
 
-**未继续猜测绕过方案**（不确定 Armbian 是否有跳过 binfmt 的开关，不编造变量名）。
+怀疑方向（未证实，需日志）：
+1. Armbian 对整个 kernel 源码目录做文件 hash —— 我们的 kernel 分支 1.6G / 数万文件，
+   一次性 `sha256sum` 会超过 ARG_MAX（约 2MB 命令行上限）。
+2. 仍在套用 `KERNELPATCHDIR='rk35xx-vendor-6.1'`（来自 rockchip-rk3588 / rk35xx family）。
+   **这些 patch 是针对 armbian/linux-rockchip 的，打到厂家 BSP 内核上必然冲突** ——
+   我们换了 KERNELSOURCE，但 family 的 patch 目录没换，这是个设计问题。
 
-### 可选方向（需查证后再动）
-1. 查 Armbian 是否有跳过 `prepare_host_binfmt_qemu` 的变量/配置（搜 `qemu-static.sh` 与 `prepare-host.sh`）。
-2. 让 Armbian 用 privileged 容器（若框架支持传入 docker run 参数）。
-3. 交叉验证：本阶段其实不一定要 qemu（arm64 本机不是必须，但 rootfs 构建阶段会用）。
-4. 若都无法解决 → 考虑 self-hosted runner（但主人明确排除该方案，需重新评估）。
+### 下一步（需要真实日志才能定论）
+1. 看完整 build.log（需 GitHub token 或开机 VM 用 `gh run view --log-failed`）。
+2. 若确认是 patch 冲突 → **不要复用 rockchip-rk3588 vendor 分支**，改为自定义 family
+   （干净指向厂家 BSP 源码，不带 Armbian 的 rk35xx patch）。
+3. 若确认是 hash 参数超限 → 需看 Armbian 是否有跳过源码 hash 的开关。
+
+> 注：CI 日志需认证才能下载，本地无 gh / 无 token，VM 已关机 —— 这是当前最大障碍。
 
 ## 八、下一步建议
 
