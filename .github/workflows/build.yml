@@ -128,8 +128,11 @@ jobs:
             echo "=== hash/sha256 related lines ==="
             grep -inE 'hash|sha256sum|files_to_hash' build.log | head -25 |
               while IFS= read -r l; do echo "::error::HASHLOG $l"; done
-            echo "=== last 30 lines ==="
-            tail -30 build.log | while IFS= read -r l; do echo "::error::TAIL $l"; done
+            echo "=== patch failure lines ==="
+            grep -inE 'patch|hunk|reject|failed|error|traceback|yaml|python' build.log | tail -80 |
+              while IFS= read -r l; do echo "::error::PATCHLOG $l"; done
+            echo "=== last 120 lines ==="
+            tail -120 build.log | while IFS= read -r l; do echo "::error::TAIL $l"; done
           else
             echo "::error::build.log not found"
           fi
