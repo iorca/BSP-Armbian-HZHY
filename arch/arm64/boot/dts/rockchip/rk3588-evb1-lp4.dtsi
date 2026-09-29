@@ -10,6 +10,11 @@
 #include "rk3588-rk806-dual.dtsi"
 
 / {
+	/* Global backlight placeholder for all board DTS files */
+	backlight: backlight {
+		compatible = "gpio-backlight";
+		status = "disabled";
+	};
 	/* If hdmirx node is disabled, delete the reserved-memory node here. */
 	reserved-memory {
 		#address-cells = <2>;
