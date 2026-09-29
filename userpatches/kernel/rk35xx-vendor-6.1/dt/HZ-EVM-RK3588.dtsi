@@ -1633,3 +1633,11 @@
 		status = "disabled";
 	};
 };
+
+/* Backlight placeholder for rk3588-evb1-lp4.dtsi:240 */
+/ {
+	backlight: backlight {
+		compatible = "gpio-backlight";
+		status = "disabled";
+	};
+};
