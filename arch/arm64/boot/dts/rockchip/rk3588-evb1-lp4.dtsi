@@ -237,10 +237,10 @@
 	};
 };
 
-&backlight {
-	pwms = <&pwm2 0 25000 0>;
-	status = "okay";
-};
+/* DISABLED: &backlight { */
+/* DISABLED: 	pwms = <&pwm2 0 25000 0>; */
+/* DISABLED: 	status = "okay"; */
+/* DISABLED: }; */
 
 &combphy0_ps {
 	status = "okay";
