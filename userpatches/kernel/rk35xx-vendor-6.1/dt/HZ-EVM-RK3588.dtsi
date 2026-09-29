@@ -1626,4 +1626,10 @@
 // 		touchscreen-size-y = <600>;
 // 		status = "okay";
 // 	};
-// };
+// 
+	/* Placeholder to satisfy references from vendor BSP includes */
+	backlight: backlight {
+		compatible = "gpio-backlight";
+		status = "disabled";
+	};
+};
