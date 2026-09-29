@@ -93,7 +93,7 @@ jobs:
           set -o pipefail
           unset PREFER_DOCKER
           ./compile.sh \
-            kernel \
+            build \
             BOARD=hz-evm-rk3588 \
             BRANCH=vendor \
             RELEASE=jammy \
