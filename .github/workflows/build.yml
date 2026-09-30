@@ -114,6 +114,20 @@ jobs:
           fi
           ls -la packages/bsp/common/usr/lib/sysctl.d/ 2>/dev/null || true
 
+      - name: Patch boot-rk35xx.cmd serial console for vendor kernel (ttyFIQ0 + earlycon)
+        run: |
+          # Vendor 6.1 BSP: uart2 is owned by fiq-debugger (rk3588-linux.dtsi,
+          # rockchip,serial-id=<2>, 1500000) -> console is ttyFIQ0, ttyS2 does not exist.
+          # armbian's boot-rk35xx.cmd hardcodes console=ttyS2,1500000 and overrides the
+          # DTS chosen bootargs, so the serial port is silent from "Starting kernel" until
+          # getty. Also enable earlycon on uart2 (0xfeb50000) by default for bring-up.
+          f=config/bootscripts/boot-rk35xx.cmd
+          sed -i 's|console=ttyS2,1500000|console=ttyFIQ0,1500000|' "$f"
+          sed -i 's|^setenv earlycon "off"|setenv earlycon "on"|' "$f"
+          sed -i 's|setenv consoleargs "earlycon ${consoleargs}"|setenv consoleargs "earlycon=uart8250,mmio32,0xfeb50000 ${consoleargs}"|' "$f"
+          grep -n 'earlycon\|console=' "$f"
+          grep -q 'console=ttyFIQ0,1500000' "$f" && grep -q 'earlycon=uart8250,mmio32,0xfeb50000' "$f" && grep -q '^setenv earlycon "on"' "$f"
+
       - name: Build Armbian image
         run: |
           # New Armbian CLI uses subcommands. KERNEL_ONLY=yes is REMOVED:
