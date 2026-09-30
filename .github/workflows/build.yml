@@ -97,6 +97,23 @@ jobs:
           sed -i 's#^function create_new_rootfs_cache_via_debootstrap() {#&\n\texport QEMU_RESERVED_VA=0x1000000000#' lib/functions/rootfs/rootfs-create.sh
           grep -n 'QEMU_RESERVED_VA' lib/functions/rootfs/rootfs-create.sh || true
 
+      - name: Patch armbian bsp-cli sysctl file to avoid dpkg conflict with systemd
+        run: |
+          # armbian's bsp-cli package (packages/bsp/common/usr/lib/sysctl.d/50-default.conf)
+          # collides with systemd 249.11-0ubuntu3.22 on jammy, which now also ships that
+          # exact path. dpkg refuses to overwrite -> "trying to overwrite
+          # '/usr/lib/sysctl.d/50-default.conf', which is also in package systemd" ->
+          # bsp-cli install fails -> build fails (run #50). Rename armbian's copy to a
+          # non-colliding name; it still loads after systemd's 50-*, preserving the tweaks.
+          if [ -f packages/bsp/common/usr/lib/sysctl.d/50-default.conf ]; then
+            mv -f packages/bsp/common/usr/lib/sysctl.d/50-default.conf \
+                  packages/bsp/common/usr/lib/sysctl.d/60-armbian-default.conf
+            echo "renamed 50-default.conf -> 60-armbian-default.conf"
+          else
+            echo "packages/bsp/common/usr/lib/sysctl.d/50-default.conf not found; skipping"
+          fi
+          ls -la packages/bsp/common/usr/lib/sysctl.d/ 2>/dev/null || true
+
       - name: Build Armbian image
         run: |
           # New Armbian CLI uses subcommands. KERNEL_ONLY=yes is REMOVED:
