@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 360
 
     steps:
@@ -85,6 +85,18 @@ jobs:
           sed -i 's#"-Wno-error=incompatible-pointer-types"#"-Wno-error=incompatible-pointer-types"\n\t\t"-Wno-error=enum-int-mismatch"#' lib/functions/compilation/uboot.sh
           grep -n 'enum-int-mismatch' lib/functions/compilation/uboot.sh || true
 
+      - name: Patch armbian rootfs for qemu-user SIGSEGV (QEMU_RESERVED_VA)
+        run: |
+          # qemu-user 10.x (Debian trixie, used inside the armbian build container)
+          # segfaults (uncaught target signal 11) while emulating arm64 during
+          # mmdebstrap on GitHub runners (Debian #1053101): the guest binary's mmap
+          # overlaps qemu's own address space and clobbers it. This is host-kernel
+          # mmap-layout dependent. Force a dedicated 40-bit guest VA range so the
+          # guest can never collide with qemu. Exported in the armbian process so it
+          # propagates into the mmdebstrap -> apt -> qemu process tree.
+          sed -i 's#^function create_new_rootfs_cache_via_debootstrap() {#&\n\texport QEMU_RESERVED_VA=0x1000000000#' lib/functions/rootfs/rootfs-create.sh
+          grep -n 'QEMU_RESERVED_VA' lib/functions/rootfs/rootfs-create.sh || true
+
       - name: Build Armbian image
         run: |
           # New Armbian CLI uses subcommands. KERNEL_ONLY=yes is REMOVED:
@@ -93,8 +105,8 @@ jobs:
           # `kernel` builds only the kernel (+dtbs) and skips rootfs/image,
           # which avoids the binfmt stage (NEEDS_BINFMT is only set for image
           # build / rootfs artifact build). Verifies vendor source fetch and
-          # toolchain wiring first; switch to `build` for the full image once
-          # the binfmt/rootfs problem is solved.
+          # toolchain wiring. Full image build is enabled; the qemu-user SIGSEGV
+          # during mmdebstrap is worked around via QEMU_RESERVED_VA + ubuntu-24.04.
           #
           # pipefail: without it the exit code comes from `tee` (always 0),
           # which masks compile.sh failures and shows a false green build.
