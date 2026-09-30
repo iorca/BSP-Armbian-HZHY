@@ -77,6 +77,14 @@ jobs:
         with:
           platforms: arm64
 
+      - name: Patch armbian uboot.sh for vendor U-Boot 2017.09 (GCC>=13 -Werror=enum-int-mismatch)
+        run: |
+          # vendor U-Boot 2017.09 triggers -Werror=enum-int-mismatch under GCC>=13.
+          # armbian's uboot.sh whitelists many -Wno-error=* but missed this one, aborting
+          # at common/command.c:504 (cmd_process enum/int mismatch). Add it to the waiver list.
+          sed -i 's#"-Wno-error=incompatible-pointer-types"#"-Wno-error=incompatible-pointer-types"\n\t\t"-Wno-error=enum-int-mismatch"#' lib/functions/compilation/uboot.sh
+          grep -n 'enum-int-mismatch' lib/functions/compilation/uboot.sh || true
+
       - name: Build Armbian image
         run: |
           # New Armbian CLI uses subcommands. KERNEL_ONLY=yes is REMOVED:
